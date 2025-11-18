@@ -15,7 +15,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { LogOut, Send, PlusCircle, RefreshCw } from "lucide-react";
+import { LogOut, Send, PlusCircle, RefreshCw, FileText } from "lucide-react";
 
 interface User {
   username: string;
@@ -26,6 +26,7 @@ export default function AdminDashboard() {
   const [user, setUser] = useState<User | null>(null);
   const [balance, setBalance] = useState<number>(0);
   const [loading, setLoading] = useState(false);
+  const [transactions, setTransactions] = useState<any[]>([]);
   
   // Transfer State
   const [transferAmount, setTransferAmount] = useState("");
@@ -51,6 +52,7 @@ export default function AdminDashboard() {
     }
     setUser(parsedUser);
     fetchBalance(parsedUser.username);
+    fetchTransactions();
   }, [router]);
 
   const fetchBalance = async (username: string) => {
@@ -62,6 +64,22 @@ export default function AdminDashboard() {
     } catch (error) {
       console.error(error);
       toast.error("Could not load balance");
+    }
+  };
+
+  const fetchTransactions = async () => {
+    try {
+      const res = await fetch("http://localhost:8080/transactions");
+      if (!res.ok) throw new Error("Failed to fetch transactions");
+      const data = await res.json();
+      try {
+        const parsed = JSON.parse(data.transactions);
+        setTransactions(parsed.reverse()); // Newest first
+      } catch (e) {
+        setTransactions([]);
+      }
+    } catch (error) {
+      console.error(error);
     }
   };
 
@@ -81,6 +99,7 @@ export default function AdminDashboard() {
       setMintAmount("");
       setIsMintOpen(false);
       if (user) fetchBalance(user.username);
+      fetchTransactions();
     } catch (error) {
       toast.error("Minting failed");
     } finally {
@@ -114,6 +133,7 @@ export default function AdminDashboard() {
       setRecipient("");
       setIsTransferOpen(false);
       fetchBalance(user.username);
+      fetchTransactions();
     } catch (error: any) {
       toast.error(error.message);
     } finally {
@@ -155,7 +175,7 @@ export default function AdminDashboard() {
               variant="secondary" 
               size="sm" 
               className="mt-4 w-full bg-white/10 hover:bg-white/20 text-white border-none"
-              onClick={() => fetchBalance(user.username)}
+              onClick={() => { fetchBalance(user.username); fetchTransactions(); }}
             >
               <RefreshCw className="mr-2 h-4 w-4" /> Refresh
             </Button>
@@ -239,6 +259,50 @@ export default function AdminDashboard() {
               </form>
             </DialogContent>
           </Dialog>
+        </div>
+
+        {/* Block Explorer */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <FileText className="h-5 w-5 text-slate-700" />
+            <h2 className="text-lg font-semibold text-slate-900">Block Explorer</h2>
+          </div>
+          
+          <div className="space-y-3">
+            {transactions.length === 0 ? (
+               <Card>
+                <CardContent className="p-4 text-center text-gray-500 text-sm">
+                  No transactions found on the ledger.
+                </CardContent>
+              </Card>
+            ) : (
+              transactions.map((tx, i) => (
+                <Card key={i} className="overflow-hidden border-l-4 border-l-blue-500">
+                  <CardContent className="p-3">
+                    <div className="flex justify-between items-start mb-2">
+                        <span className="text-xs font-mono bg-slate-100 px-1 py-0.5 rounded text-slate-600 truncate max-w-[200px]">
+                            {tx.txId}
+                        </span>
+                        <span className="text-xs text-slate-400">
+                            {new Date(tx.timestamp * 1000).toLocaleString()}
+                        </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                        <div className="flex flex-col">
+                            <span className="text-sm font-medium text-slate-700">
+                                {tx.from} <span className="text-slate-400">→</span> {tx.to}
+                            </span>
+                            <span className="text-xs text-slate-500 capitalize">{tx.type}</span>
+                        </div>
+                        <div className="text-right">
+                            <span className="font-bold text-slate-800">{tx.amount} VAP</span>
+                        </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
         </div>
       </main>
     </div>

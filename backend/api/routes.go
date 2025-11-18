@@ -14,6 +14,7 @@ func SetupRoutes(r *gin.Engine) {
 	r.GET("/balance/:id", getBalance)
 	r.POST("/transfer", transfer)
 	r.GET("/history/:id", getHistory)
+	r.GET("/transactions", getAllTransactions)
 	r.POST("/mint", mint)
 }
 
@@ -90,6 +91,16 @@ func getHistory(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"history": string(result)})
+}
+
+func getAllTransactions(c *gin.Context) {
+	result, err := blockchain.Contract.EvaluateTransaction("GetAllTransactions")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"transactions": string(result)})
 }
 
 func mint(c *gin.Context) {

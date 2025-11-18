@@ -164,6 +164,32 @@ func (s *SmartContract) Transfer(ctx contractapi.TransactionContextInterface, fr
 	return ctx.GetStub().PutState("TX_"+txID, recordJSON)
 }
 
+// GetAllTransactions returns all transaction records found in world state
+func (s *SmartContract) GetAllTransactions(ctx contractapi.TransactionContextInterface) ([]*TransactionRecord, error) {
+	resultsIterator, err := ctx.GetStub().GetStateByRange("TX_", "TX_\uffff")
+	if err != nil {
+		return nil, err
+	}
+	defer resultsIterator.Close()
+
+	var records []*TransactionRecord
+	for resultsIterator.HasNext() {
+		queryResponse, err := resultsIterator.Next()
+		if err != nil {
+			return nil, err
+		}
+
+		var record TransactionRecord
+		err = json.Unmarshal(queryResponse.Value, &record)
+		if err != nil {
+			return nil, err
+		}
+		records = append(records, &record)
+	}
+
+	return records, nil
+}
+
 // GetBalance returns the balance of a wallet
 func (s *SmartContract) GetBalance(ctx contractapi.TransactionContextInterface, id string) (float64, error) {
 	walletJSON, err := ctx.GetStub().GetState(id)
