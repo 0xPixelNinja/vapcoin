@@ -4,20 +4,27 @@ set -e
 
 # Use double slash to prevent Git Bash path conversion
 CC_NAME="vapcoin"
-CC_VERSION="1.1"
+CC_VERSION="1.3"
 CC_SEQUENCE="2"
 CC_SRC_PATH="//opt/gopath/src/github.com/chaincode"
 
 echo "Packaging new chaincode version ${CC_VERSION}..."
 docker exec cli peer lifecycle chaincode package ${CC_NAME}_${CC_VERSION}.tar.gz --path ${CC_SRC_PATH} --lang golang --label ${CC_NAME}_${CC_VERSION}
 
-echo "Installing new chaincode..."
-docker exec cli peer lifecycle chaincode install ${CC_NAME}_${CC_VERSION}.tar.gz
-
-echo "Querying installed chaincode..."
+echo "Checking if chaincode is already installed..."
 docker exec cli peer lifecycle chaincode queryinstalled >&log.txt
-cat log.txt
 PACKAGE_ID=$(sed -n "/${CC_NAME}_${CC_VERSION}/{s/^Package ID: //; s/, Label:.*$//; p;}" log.txt)
+
+if [ -z "$PACKAGE_ID" ]; then
+    echo "Installing new chaincode..."
+    docker exec cli peer lifecycle chaincode install ${CC_NAME}_${CC_VERSION}.tar.gz
+    
+    echo "Querying installed chaincode..."
+    docker exec cli peer lifecycle chaincode queryinstalled >&log.txt
+    PACKAGE_ID=$(sed -n "/${CC_NAME}_${CC_VERSION}/{s/^Package ID: //; s/, Label:.*$//; p;}" log.txt)
+else
+    echo "Chaincode already installed. Skipping installation."
+fi
 
 if [ -z "$PACKAGE_ID" ]; then
     echo "Error: Package ID not found. Chaincode installation might have failed."

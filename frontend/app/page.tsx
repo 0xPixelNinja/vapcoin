@@ -97,6 +97,11 @@ export default function LoginPage() {
           <p>Merchant: merchant1 / password</p>
           <p>Admin: admin / password</p>
         </div>
+        <div className="px-6 pb-6 text-center">
+          <Button variant="link" size="sm" onClick={() => router.push("/verify")}>
+            Verify Transaction (Public)
+          </Button>
+        </div>
       </Card>
     </div>
   )

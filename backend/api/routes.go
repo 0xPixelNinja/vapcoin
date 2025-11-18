@@ -14,6 +14,7 @@ func SetupRoutes(r *gin.Engine) {
 	// Public Routes
 	r.POST("/login", login)
 	r.POST("/register", register)
+	r.GET("/transaction/:txId", getTransaction)
 
 	// Protected Routes
 	protected := r.Group("/")
@@ -224,6 +225,24 @@ func getAllTransactions(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, resp)
+}
+
+func getTransaction(c *gin.Context) {
+	txId := c.Param("txId")
+
+	result, err := blockchain.Contract.EvaluateTransaction("GetTransaction", txId)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Transaction not found"})
+		return
+	}
+
+	var record map[string]interface{}
+	if err := json.Unmarshal(result, &record); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse transaction record"})
+		return
+	}
+
+	c.JSON(http.StatusOK, record)
 }
 
 func mint(c *gin.Context) {

@@ -407,6 +407,25 @@ func (s *SmartContract) GetAllTransactions(ctx contractapi.TransactionContextInt
 	return records, nil
 }
 
+// GetTransaction returns a specific transaction by ID
+func (s *SmartContract) GetTransaction(ctx contractapi.TransactionContextInterface, txID string) (*TransactionRecord, error) {
+	recordJSON, err := ctx.GetStub().GetState("TX_" + txID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read from world state: %v", err)
+	}
+	if recordJSON == nil {
+		return nil, fmt.Errorf("transaction %s does not exist", txID)
+	}
+
+	var record TransactionRecord
+	err = json.Unmarshal(recordJSON, &record)
+	if err != nil {
+		return nil, err
+	}
+
+	return &record, nil
+}
+
 // GetBalance returns the balance of a wallet
 func (s *SmartContract) GetBalance(ctx contractapi.TransactionContextInterface, id string) (float64, error) {
 	walletJSON, err := ctx.GetStub().GetState(id)

@@ -18,6 +18,7 @@ import { Scanner } from "@yudiel/react-qr-scanner";
 import QRCode from "react-qr-code";
 import { toast } from "sonner";
 import { LogOut, QrCode, Send, ArrowDownLeft, RefreshCw } from "lucide-react";
+import { TransactionList } from "@/components/TransactionList";
 
 interface User {
   username: string;
@@ -285,49 +286,14 @@ export default function StudentDashboard() {
         {/* Recent Activity Placeholder */}
         <div className="space-y-4">
           <h2 className="text-lg font-semibold">Recent Activity</h2>
-          <div className="space-y-3">
-            {history.length === 0 ? (
-               <Card>
-                <CardContent className="p-4 text-center text-gray-500 text-sm">
-                  No recent transactions found.
-                </CardContent>
-              </Card>
-            ) : (
-              history.map((tx, i) => {
-                const isSender = tx.from === user.username;
-                return (
-                  <Card key={i} className="overflow-hidden">
-                    <CardContent className="p-3 flex justify-between items-center">
-                      <div className="flex flex-col">
-                          <span className="text-xs text-gray-400 font-mono">{tx.txId.substring(0, 8)}...</span>
-                          <span className="text-sm font-medium">
-                            {isSender ? `Sent to ${tx.to}` : `Received from ${tx.from}`}
-                          </span>
-                          <span className="text-xs text-gray-500">
-                            {new Date(tx.timestamp * 1000).toLocaleDateString()}
-                          </span>
-                      </div>
-                      <div className="text-right">
-                          <span className={`font-bold ${isSender ? 'text-red-500' : 'text-green-500'}`}>
-                            {isSender ? '-' : '+'}{tx.amount} VAP
-                          </span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })
-            )}
-            
-            {hasMore && (
-              <Button 
-                variant="outline" 
-                className="w-full" 
-                onClick={() => fetchHistory(user.username, user.token, true)}
-              >
-                Load More
-              </Button>
-            )}
-          </div>
+          <TransactionList 
+            transactions={history} 
+            role="student" 
+            username={user.username}
+            loading={false}
+            onLoadMore={hasMore ? () => fetchHistory(user.username, user.token, true) : undefined}
+            hasMore={hasMore}
+          />
         </div>
       </main>
     </div>
