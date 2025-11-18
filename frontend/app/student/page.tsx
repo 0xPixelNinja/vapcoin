@@ -69,7 +69,7 @@ export default function StudentDashboard() {
   const fetchHistory = async (username: string, loadMore = false) => {
     try {
       const query = new URLSearchParams({
-        pageSize: "10",
+        pageSize: "4",
         bookmark: loadMore ? bookmark : "",
       });
 
@@ -86,7 +86,7 @@ export default function StudentDashboard() {
       }
 
       setBookmark(data.bookmark);
-      setHasMore(data.recordsCount === 10 && data.bookmark !== ""); // Assuming pageSize is 10
+      setHasMore(data.recordsCount === 4 && data.bookmark !== ""); // Assuming pageSize is 4
     } catch (error) {
       console.error(error);
       if (!loadMore) setHistory([]);

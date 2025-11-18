@@ -72,7 +72,7 @@ export default function AdminDashboard() {
   const fetchTransactions = async (loadMore = false) => {
     try {
       const query = new URLSearchParams({
-        pageSize: "10",
+        pageSize: "4",
         bookmark: loadMore ? bookmark : "",
       });
 
@@ -89,7 +89,7 @@ export default function AdminDashboard() {
       }
 
       setBookmark(data.bookmark);
-      setHasMore(data.recordsCount === 10 && data.bookmark !== "");
+      setHasMore(data.recordsCount === 4 && data.bookmark !== "");
     } catch (error) {
       console.error(error);
       if (!loadMore) setTransactions([]);
