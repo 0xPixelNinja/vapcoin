@@ -52,7 +52,7 @@ export default function StudentDashboard() {
 
   const fetchBalance = async (username: string) => {
     try {
-      const res = await fetch(`http://localhost:8080/balance/${username}`);
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/balance/${username}`);
       if (!res.ok) throw new Error("Failed to fetch balance");
       const data = await res.json();
       setBalance(data.balance);
@@ -66,13 +66,33 @@ export default function StudentDashboard() {
 
   const fetchHistory = async (username: string) => {
     try {
-      const res = await fetch(`http://localhost:8080/history/${username}`);
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/history/${username}`);
       if (!res.ok) throw new Error("Failed to fetch history");
       const data = await res.json();
-      // Parse the history string if it's a JSON string, or use as is
-      // The backend returns { history: string(result) } where result is likely a JSON array string
+      
       try {
-          const parsedHistory = JSON.parse(data.history);
+          // The backend returns a JSON string of an array of strings
+          const rawHistory: string[] = JSON.parse(data.history);
+          
+          const parsedHistory = rawHistory.map(item => {
+              // Format: "TxID: <txid>, Value: <json>"
+              const valueStart = item.indexOf("Value: ");
+              if (valueStart === -1) return null;
+              
+              const txId = item.substring(6, valueStart - 2); // "TxID: " is 6 chars, ", " is 2 chars
+              const jsonStr = item.substring(valueStart + 7); // "Value: " is 7 chars
+              
+              try {
+                  const walletState = JSON.parse(jsonStr);
+                  return {
+                      txId,
+                      balance: walletState.balance,
+                  };
+              } catch (e) {
+                  return null;
+              }
+          }).filter(Boolean).reverse(); // Show newest first
+
           setHistory(parsedHistory);
       } catch (e) {
           console.error("Error parsing history:", e);
@@ -89,7 +109,7 @@ export default function StudentDashboard() {
     setLoading(true);
 
     try {
-      const res = await fetch("http://localhost:8080/transfer", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/transfer`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -231,6 +251,10 @@ export default function StudentDashboard() {
                             handleScan(result[0].rawValue);
                         }
                     }}
+                    onError={(error: any) => {
+                        console.error(error);
+                        toast.error("Camera Error: " + (error?.message || "Unknown error"));
+                    }}
                 />
               </div>
             </DialogContent>
@@ -262,11 +286,29 @@ export default function StudentDashboard() {
         {/* Recent Activity Placeholder */}
         <div className="space-y-4">
           <h2 className="text-lg font-semibold">Recent Activity</h2>
-          <Card>
-            <CardContent className="p-4 text-center text-gray-500 text-sm">
-              No recent transactions found.
-            </CardContent>
-          </Card>
+          <div className="space-y-3">
+            {history.length === 0 ? (
+               <Card>
+                <CardContent className="p-4 text-center text-gray-500 text-sm">
+                  No recent transactions found.
+                </CardContent>
+              </Card>
+            ) : (
+              history.map((tx, i) => (
+                <Card key={i} className="overflow-hidden">
+                  <CardContent className="p-3 flex justify-between items-center">
+                    <div className="flex flex-col">
+                        <span className="text-xs text-gray-400 font-mono">{tx.txId.substring(0, 8)}...</span>
+                        <span className="text-sm font-medium">Balance Update</span>
+                    </div>
+                    <div className="text-right">
+                        <span className="font-bold text-primary">{tx.balance} VAP</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
         </div>
       </main>
     </div>

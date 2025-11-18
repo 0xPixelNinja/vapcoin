@@ -57,7 +57,7 @@ export default function AdminDashboard() {
 
   const fetchBalance = async (username: string) => {
     try {
-      const res = await fetch(`http://localhost:8080/balance/${username}`);
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/balance/${username}`);
       if (!res.ok) throw new Error("Failed to fetch balance");
       const data = await res.json();
       setBalance(data.balance);
@@ -69,7 +69,7 @@ export default function AdminDashboard() {
 
   const fetchTransactions = async () => {
     try {
-      const res = await fetch("http://localhost:8080/transactions");
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/transactions`);
       if (!res.ok) throw new Error("Failed to fetch transactions");
       const data = await res.json();
       try {
@@ -87,7 +87,7 @@ export default function AdminDashboard() {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:8080/mint", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/mint`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ amount: parseFloat(mintAmount) }),
@@ -113,7 +113,7 @@ export default function AdminDashboard() {
     setLoading(true);
 
     try {
-      const res = await fetch("http://localhost:8080/transfer", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/transfer`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

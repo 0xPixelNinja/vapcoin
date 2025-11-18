@@ -47,7 +47,7 @@ export default function MerchantDashboard() {
 
   const fetchBalance = async (username: string) => {
     try {
-      const res = await fetch(`http://localhost:8080/balance/${username}`);
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/balance/${username}`);
       if (!res.ok) throw new Error("Failed to fetch balance");
       const data = await res.json();
       setBalance(data.balance);
@@ -59,7 +59,7 @@ export default function MerchantDashboard() {
 
   const fetchHistory = async (username: string) => {
     try {
-      const res = await fetch(`http://localhost:8080/history/${username}`);
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/history/${username}`);
       if (!res.ok) throw new Error("Failed to fetch history");
       const data = await res.json();
       
