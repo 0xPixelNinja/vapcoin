@@ -63,43 +63,33 @@ export default function StudentDashboard() {
   };
 
   const [history, setHistory] = useState<any[]>([]);
+  const [bookmark, setBookmark] = useState("");
+  const [hasMore, setHasMore] = useState(false);
 
-  const fetchHistory = async (username: string) => {
+  const fetchHistory = async (username: string, loadMore = false) => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/history/${username}`);
+      const query = new URLSearchParams({
+        pageSize: "10",
+        bookmark: loadMore ? bookmark : "",
+      });
+
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/history/${username}?${query}`);
       if (!res.ok) throw new Error("Failed to fetch history");
       const data = await res.json();
       
-      try {
-          // The backend returns a JSON string of an array of strings
-          const rawHistory: string[] = JSON.parse(data.history);
-          
-          const parsedHistory = rawHistory.map(item => {
-              // Format: "TxID: <txid>, Value: <json>"
-              const valueStart = item.indexOf("Value: ");
-              if (valueStart === -1) return null;
-              
-              const txId = item.substring(6, valueStart - 2); // "TxID: " is 6 chars, ", " is 2 chars
-              const jsonStr = item.substring(valueStart + 7); // "Value: " is 7 chars
-              
-              try {
-                  const walletState = JSON.parse(jsonStr);
-                  return {
-                      txId,
-                      balance: walletState.balance,
-                  };
-              } catch (e) {
-                  return null;
-              }
-          }).filter(Boolean).reverse(); // Show newest first
-
-          setHistory(parsedHistory);
-      } catch (e) {
-          console.error("Error parsing history:", e);
-          setHistory([]);
+      const newRecords = data.records || [];
+      
+      if (loadMore) {
+        setHistory(prev => [...prev, ...newRecords]);
+      } else {
+        setHistory(newRecords);
       }
+
+      setBookmark(data.bookmark);
+      setHasMore(data.recordsCount === 10 && data.bookmark !== ""); // Assuming pageSize is 10
     } catch (error) {
       console.error(error);
+      if (!loadMore) setHistory([]);
     }
   };
 
@@ -129,6 +119,7 @@ export default function StudentDashboard() {
       setRecipient("");
       setIsTransferOpen(false);
       fetchBalance(user.username);
+      fetchHistory(user.username);
     } catch (error: any) {
       toast.error(error.message);
     } finally {
@@ -179,7 +170,7 @@ export default function StudentDashboard() {
               variant="secondary" 
               size="sm" 
               className="mt-4 w-full bg-white/20 hover:bg-white/30 text-white border-none"
-              onClick={() => fetchBalance(user.username)}
+              onClick={() => { fetchBalance(user.username); fetchHistory(user.username); }}
             >
               <RefreshCw className="mr-2 h-4 w-4" /> Refresh
             </Button>
@@ -294,19 +285,39 @@ export default function StudentDashboard() {
                 </CardContent>
               </Card>
             ) : (
-              history.map((tx, i) => (
-                <Card key={i} className="overflow-hidden">
-                  <CardContent className="p-3 flex justify-between items-center">
-                    <div className="flex flex-col">
-                        <span className="text-xs text-gray-400 font-mono">{tx.txId.substring(0, 8)}...</span>
-                        <span className="text-sm font-medium">Balance Update</span>
-                    </div>
-                    <div className="text-right">
-                        <span className="font-bold text-primary">{tx.balance} VAP</span>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
+              history.map((tx, i) => {
+                const isSender = tx.from === user.username;
+                return (
+                  <Card key={i} className="overflow-hidden">
+                    <CardContent className="p-3 flex justify-between items-center">
+                      <div className="flex flex-col">
+                          <span className="text-xs text-gray-400 font-mono">{tx.txId.substring(0, 8)}...</span>
+                          <span className="text-sm font-medium">
+                            {isSender ? `Sent to ${tx.to}` : `Received from ${tx.from}`}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {new Date(tx.timestamp * 1000).toLocaleDateString()}
+                          </span>
+                      </div>
+                      <div className="text-right">
+                          <span className={`font-bold ${isSender ? 'text-red-500' : 'text-green-500'}`}>
+                            {isSender ? '-' : '+'}{tx.amount} VAP
+                          </span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })
+            )}
+            
+            {hasMore && (
+              <Button 
+                variant="outline" 
+                className="w-full" 
+                onClick={() => fetchHistory(user.username, true)}
+              >
+                Load More
+              </Button>
             )}
           </div>
         </div>

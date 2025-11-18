@@ -27,6 +27,8 @@ export default function AdminDashboard() {
   const [balance, setBalance] = useState<number>(0);
   const [loading, setLoading] = useState(false);
   const [transactions, setTransactions] = useState<any[]>([]);
+  const [bookmark, setBookmark] = useState("");
+  const [hasMore, setHasMore] = useState(false);
   
   // Transfer State
   const [transferAmount, setTransferAmount] = useState("");
@@ -67,19 +69,30 @@ export default function AdminDashboard() {
     }
   };
 
-  const fetchTransactions = async () => {
+  const fetchTransactions = async (loadMore = false) => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/transactions`);
+      const query = new URLSearchParams({
+        pageSize: "10",
+        bookmark: loadMore ? bookmark : "",
+      });
+
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/transactions?${query}`);
       if (!res.ok) throw new Error("Failed to fetch transactions");
       const data = await res.json();
-      try {
-        const parsed = JSON.parse(data.transactions);
-        setTransactions(parsed.reverse()); // Newest first
-      } catch (e) {
-        setTransactions([]);
+      
+      const newRecords = data.records || [];
+      
+      if (loadMore) {
+        setTransactions(prev => [...prev, ...newRecords]);
+      } else {
+        setTransactions(newRecords);
       }
+
+      setBookmark(data.bookmark);
+      setHasMore(data.recordsCount === 10 && data.bookmark !== "");
     } catch (error) {
       console.error(error);
+      if (!loadMore) setTransactions([]);
     }
   };
 
@@ -301,6 +314,16 @@ export default function AdminDashboard() {
                   </CardContent>
                 </Card>
               ))
+            )}
+
+            {hasMore && (
+              <Button 
+                variant="outline" 
+                className="w-full" 
+                onClick={() => fetchTransactions(true)}
+              >
+                Load More
+              </Button>
             )}
           </div>
         </div>

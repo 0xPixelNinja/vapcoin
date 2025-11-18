@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"vapcoin-backend/blockchain"
@@ -83,24 +84,39 @@ func transfer(c *gin.Context) {
 
 func getHistory(c *gin.Context) {
 	id := c.Param("id")
+	pageSizeStr := c.DefaultQuery("pageSize", "10")
+	bookmark := c.DefaultQuery("bookmark", "")
 
-	result, err := blockchain.Contract.EvaluateTransaction("GetHistory", id)
+	result, err := blockchain.Contract.EvaluateTransaction("GetPaginatedTransactions", pageSizeStr, bookmark, id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"history": string(result)})
+	var resp map[string]interface{}
+	if err := json.Unmarshal(result, &resp); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse chaincode response"})
+		return
+	}
+	c.JSON(http.StatusOK, resp)
 }
 
 func getAllTransactions(c *gin.Context) {
-	result, err := blockchain.Contract.EvaluateTransaction("GetAllTransactions")
+	pageSizeStr := c.DefaultQuery("pageSize", "10")
+	bookmark := c.DefaultQuery("bookmark", "")
+
+	result, err := blockchain.Contract.EvaluateTransaction("GetPaginatedTransactions", pageSizeStr, bookmark, "")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"transactions": string(result)})
+	var resp map[string]interface{}
+	if err := json.Unmarshal(result, &resp); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse chaincode response"})
+		return
+	}
+	c.JSON(http.StatusOK, resp)
 }
 
 func mint(c *gin.Context) {

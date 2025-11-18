@@ -27,6 +27,8 @@ export default function MerchantDashboard() {
   const [user, setUser] = useState<User | null>(null);
   const [balance, setBalance] = useState<number>(0);
   const [history, setHistory] = useState<any[]>([]);
+  const [bookmark, setBookmark] = useState("");
+  const [hasMore, setHasMore] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -57,43 +59,30 @@ export default function MerchantDashboard() {
     }
   };
 
-  const fetchHistory = async (username: string) => {
+  const fetchHistory = async (username: string, loadMore = false) => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/history/${username}`);
+      const query = new URLSearchParams({
+        pageSize: "10",
+        bookmark: loadMore ? bookmark : "",
+      });
+
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/history/${username}?${query}`);
       if (!res.ok) throw new Error("Failed to fetch history");
       const data = await res.json();
       
-      try {
-          // The backend returns a JSON string of an array of strings
-          const rawHistory: string[] = JSON.parse(data.history);
-          
-          const parsedHistory = rawHistory.map(item => {
-              // Format: "TxID: <txid>, Value: <json>"
-              const valueStart = item.indexOf("Value: ");
-              if (valueStart === -1) return null;
-              
-              const txId = item.substring(6, valueStart - 2); // "TxID: " is 6 chars, ", " is 2 chars
-              const jsonStr = item.substring(valueStart + 7); // "Value: " is 7 chars
-              
-              try {
-                  const walletState = JSON.parse(jsonStr);
-                  return {
-                      txId,
-                      balance: walletState.balance,
-                      // We don't have timestamp in the string unfortunately, unless we update chaincode
-                  };
-              } catch (e) {
-                  return null;
-              }
-          }).filter(Boolean).reverse(); // Show newest first
-
-          setHistory(parsedHistory);
-      } catch (e) {
-          console.error("Error parsing history:", e);
-          setHistory([]);
+      const newRecords = data.records || [];
+      
+      if (loadMore) {
+        setHistory(prev => [...prev, ...newRecords]);
+      } else {
+        setHistory(newRecords);
       }
+
+      setBookmark(data.bookmark);
+      setHasMore(data.recordsCount === 10 && data.bookmark !== "");
     } catch (error) {
       console.error(error);
+      if (!loadMore) setHistory([]);
     }
   };
 
@@ -177,19 +166,39 @@ export default function MerchantDashboard() {
                 </CardContent>
               </Card>
             ) : (
-              history.map((tx, i) => (
-                <Card key={i} className="overflow-hidden">
-                  <CardContent className="p-3 flex justify-between items-center">
-                    <div className="flex flex-col">
-                        <span className="text-xs text-gray-400 font-mono">{tx.txId.substring(0, 8)}...</span>
-                        <span className="text-sm font-medium">Balance Update</span>
-                    </div>
-                    <div className="text-right">
-                        <span className="font-bold text-teal-600">{tx.balance} VAP</span>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
+              history.map((tx, i) => {
+                const isSender = tx.from === user.username;
+                return (
+                  <Card key={i} className="overflow-hidden">
+                    <CardContent className="p-3 flex justify-between items-center">
+                      <div className="flex flex-col">
+                          <span className="text-xs text-gray-400 font-mono">{tx.txId.substring(0, 8)}...</span>
+                          <span className="text-sm font-medium">
+                             {isSender ? `Sent to ${tx.to}` : `Received from ${tx.from}`}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {new Date(tx.timestamp * 1000).toLocaleDateString()}
+                          </span>
+                      </div>
+                      <div className="text-right">
+                          <span className={`font-bold ${isSender ? 'text-red-500' : 'text-teal-600'}`}>
+                            {isSender ? '-' : '+'}{tx.amount} VAP
+                          </span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })
+            )}
+
+            {hasMore && (
+              <Button 
+                variant="outline" 
+                className="w-full border-teal-200 text-teal-700 hover:bg-teal-50" 
+                onClick={() => fetchHistory(user.username, true)}
+              >
+                Load More
+              </Button>
             )}
           </div>
         </div>

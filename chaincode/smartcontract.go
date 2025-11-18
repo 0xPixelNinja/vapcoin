@@ -29,6 +29,13 @@ type TransactionRecord struct {
 	Type      string  `json:"type"` // "mint", "transfer"
 }
 
+// PaginatedResponse describes the response for paginated transactions
+type PaginatedResponse struct {
+	Records      []*TransactionRecord `json:"records"`
+	Bookmark     string               `json:"bookmark"`
+	RecordsCount int                  `json:"recordsCount"`
+}
+
 // InitLedger adds a base set of wallets to the ledger
 func (s *SmartContract) InitLedger(ctx contractapi.TransactionContextInterface) error {
 	wallets := []UserWallet{
@@ -80,7 +87,38 @@ func (s *SmartContract) Mint(ctx contractapi.TransactionContextInterface, amount
 		return err
 	}
 
-	return ctx.GetStub().PutState("admin", walletJSON)
+	err = ctx.GetStub().PutState("admin", walletJSON)
+	if err != nil {
+		return err
+	}
+
+	// Record Transaction History for Mint
+	txID := ctx.GetStub().GetTxID()
+	timestamp, _ := ctx.GetStub().GetTxTimestamp()
+
+	record := TransactionRecord{
+		TxID:      txID,
+		From:      "system",
+		To:        "admin",
+		Amount:    amount,
+		Timestamp: timestamp.Seconds,
+		Type:      "mint",
+	}
+
+	recordJSON, _ := json.Marshal(record)
+
+	// Indexing for pagination/search by user
+	indexName := "user~tx"
+	receiverKey, err := ctx.GetStub().CreateCompositeKey(indexName, []string{"admin", txID})
+	if err != nil {
+		return err
+	}
+	err = ctx.GetStub().PutState(receiverKey, []byte{0x00})
+	if err != nil {
+		return err
+	}
+
+	return ctx.GetStub().PutState("TX_"+txID, recordJSON)
 }
 
 // Transfer moves coins from one wallet to another
@@ -159,9 +197,109 @@ func (s *SmartContract) Transfer(ctx contractapi.TransactionContextInterface, fr
 	// For MVP, let's just emit an event or rely on GetHistoryForKey.
 	// But storing a record is good for the "Block Explorer" if we query by range.
 
+	// Indexing for pagination/search by user
+	indexName := "user~tx"
+	senderKey, err := ctx.GetStub().CreateCompositeKey(indexName, []string{fromID, txID})
+	if err != nil {
+		return err
+	}
+	err = ctx.GetStub().PutState(senderKey, []byte{0x00})
+	if err != nil {
+		return err
+	}
+
+	receiverKey, err := ctx.GetStub().CreateCompositeKey(indexName, []string{toID, txID})
+	if err != nil {
+		return err
+	}
+	err = ctx.GetStub().PutState(receiverKey, []byte{0x00})
+	if err != nil {
+		return err
+	}
+
 	// Let's create a composite key for the transaction to store it as a separate state object
 	// Key: "TX" + TxID
 	return ctx.GetStub().PutState("TX_"+txID, recordJSON)
+}
+
+// GetPaginatedTransactions returns transactions with pagination
+// If userId is provided, returns transactions for that user.
+// If userId is empty, returns all transactions.
+func (s *SmartContract) GetPaginatedTransactions(ctx contractapi.TransactionContextInterface, pageSize int32, bookmark string, userId string) (*PaginatedResponse, error) {
+	var records []*TransactionRecord
+	var fetchedBookmark string
+
+	if userId != "" {
+		// Query by user
+		resultsIterator, metadata, err := ctx.GetStub().GetStateByPartialCompositeKeyWithPagination("user~tx", []string{userId}, pageSize, bookmark)
+		if err != nil {
+			return nil, err
+		}
+		defer resultsIterator.Close()
+
+		fetchedBookmark = metadata.Bookmark
+
+		for resultsIterator.HasNext() {
+			response, err := resultsIterator.Next()
+			if err != nil {
+				return nil, err
+			}
+
+			_, compositeKeyParts, err := ctx.GetStub().SplitCompositeKey(response.Key)
+			if err != nil {
+				return nil, err
+			}
+
+			// compositeKeyParts[0] is userId, compositeKeyParts[1] is txID
+			if len(compositeKeyParts) > 1 {
+				txID := compositeKeyParts[1]
+				// Get the actual transaction record
+				recordJSON, err := ctx.GetStub().GetState("TX_" + txID)
+				if err != nil {
+					continue
+				}
+				if recordJSON == nil {
+					continue
+				}
+
+				var record TransactionRecord
+				err = json.Unmarshal(recordJSON, &record)
+				if err != nil {
+					continue
+				}
+				records = append(records, &record)
+			}
+		}
+	} else {
+		// Query all
+		resultsIterator, metadata, err := ctx.GetStub().GetStateByRangeWithPagination("TX_", "TX_\uffff", pageSize, bookmark)
+		if err != nil {
+			return nil, err
+		}
+		defer resultsIterator.Close()
+
+		fetchedBookmark = metadata.Bookmark
+
+		for resultsIterator.HasNext() {
+			queryResponse, err := resultsIterator.Next()
+			if err != nil {
+				return nil, err
+			}
+
+			var record TransactionRecord
+			err = json.Unmarshal(queryResponse.Value, &record)
+			if err != nil {
+				return nil, err
+			}
+			records = append(records, &record)
+		}
+	}
+
+	return &PaginatedResponse{
+		Records:      records,
+		Bookmark:     fetchedBookmark,
+		RecordsCount: len(records),
+	}, nil
 }
 
 // GetAllTransactions returns all transaction records found in world state
