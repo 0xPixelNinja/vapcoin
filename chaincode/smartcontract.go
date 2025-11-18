@@ -45,6 +45,16 @@ func (s *SmartContract) InitLedger(ctx contractapi.TransactionContextInterface) 
 	}
 
 	for _, wallet := range wallets {
+		// Check if wallet already exists to avoid overwriting data on upgrade/restart
+		exists, err := ctx.GetStub().GetState(wallet.ID)
+		if err != nil {
+			return fmt.Errorf("failed to read from world state: %v", err)
+		}
+		if exists != nil {
+			fmt.Printf("Wallet %s already exists, skipping initialization\n", wallet.ID)
+			continue
+		}
+
 		walletJSON, err := json.Marshal(wallet)
 		if err != nil {
 			return err
@@ -53,6 +63,49 @@ func (s *SmartContract) InitLedger(ctx contractapi.TransactionContextInterface) 
 		err = ctx.GetStub().PutState(wallet.ID, walletJSON)
 		if err != nil {
 			return fmt.Errorf("failed to put to world state. %v", err)
+		}
+	}
+
+	return nil
+}
+
+// ReindexHistory creates the composite keys for existing transactions
+// This is useful when upgrading from a version without pagination/indexing
+func (s *SmartContract) ReindexHistory(ctx contractapi.TransactionContextInterface) error {
+	// Iterate over all transactions
+	resultsIterator, err := ctx.GetStub().GetStateByRange("TX_", "TX_\uffff")
+	if err != nil {
+		return err
+	}
+	defer resultsIterator.Close()
+
+	for resultsIterator.HasNext() {
+		queryResponse, err := resultsIterator.Next()
+		if err != nil {
+			return err
+		}
+
+		var record TransactionRecord
+		err = json.Unmarshal(queryResponse.Value, &record)
+		if err != nil {
+			continue
+		}
+
+		// Create composite keys
+		indexName := "user~tx"
+
+		// Sender Index
+		if record.From != "system" { // Don't index system mints for sender if not needed, or do it.
+			senderKey, err := ctx.GetStub().CreateCompositeKey(indexName, []string{record.From, record.TxID})
+			if err == nil {
+				ctx.GetStub().PutState(senderKey, []byte{0x00})
+			}
+		}
+
+		// Receiver Index
+		receiverKey, err := ctx.GetStub().CreateCompositeKey(indexName, []string{record.To, record.TxID})
+		if err == nil {
+			ctx.GetStub().PutState(receiverKey, []byte{0x00})
 		}
 	}
 
