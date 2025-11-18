@@ -21,6 +21,7 @@ import { LogOut, ArrowDownLeft, RefreshCw, History } from "lucide-react";
 interface User {
   username: string;
   role: string;
+  token: string;
 }
 
 export default function MerchantDashboard() {
@@ -43,13 +44,15 @@ export default function MerchantDashboard() {
       return;
     }
     setUser(parsedUser);
-    fetchBalance(parsedUser.username);
-    fetchHistory(parsedUser.username);
+    fetchBalance(parsedUser.username, parsedUser.token);
+    fetchHistory(parsedUser.username, parsedUser.token);
   }, [router]);
 
-  const fetchBalance = async (username: string) => {
+  const fetchBalance = async (username: string, token: string) => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/balance/${username}`);
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/balance/${username}`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
       if (!res.ok) throw new Error("Failed to fetch balance");
       const data = await res.json();
       setBalance(data.balance);
@@ -59,14 +62,16 @@ export default function MerchantDashboard() {
     }
   };
 
-  const fetchHistory = async (username: string, loadMore = false) => {
+  const fetchHistory = async (username: string, token: string, loadMore = false) => {
     try {
       const query = new URLSearchParams({
         pageSize: "4",
         bookmark: loadMore ? bookmark : "",
       });
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/history/${username}?${query}`);
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/history/${username}?${query}`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
       if (!res.ok) throw new Error("Failed to fetch history");
       const data = await res.json();
       
@@ -120,7 +125,7 @@ export default function MerchantDashboard() {
               variant="secondary" 
               size="sm" 
               className="mt-4 w-full bg-white/20 hover:bg-white/30 text-white border-none"
-              onClick={() => { fetchBalance(user.username); fetchHistory(user.username); }}
+              onClick={() => { fetchBalance(user.username, user.token); fetchHistory(user.username, user.token); }}
             >
               <RefreshCw className="mr-2 h-4 w-4" /> Refresh
             </Button>
@@ -195,7 +200,7 @@ export default function MerchantDashboard() {
               <Button 
                 variant="outline" 
                 className="w-full border-teal-200 text-teal-700 hover:bg-teal-50" 
-                onClick={() => fetchHistory(user.username, true)}
+                onClick={() => fetchHistory(user.username, user.token, true)}
               >
                 Load More
               </Button>

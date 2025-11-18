@@ -54,19 +54,25 @@ This document defines the scope and execution plan for the "Vertical Slice" MVP 
 *   `GetBalance(id)`: Returns current world state for a user.
 *   `GetHistory(id)`: Returns history of a specific key.
 *   `GetAllTransactions()`: (Admin only) Dumps the ledger for the explorer.
+*   `CreateWallet(id, role)`: Initializes a new wallet on the ledger.
 
 ### 5.2 User Flows
-1.  **Login:** User enters credentials -> System validates against Postgres -> Returns JWT.
-2.  **Student Payment:**
+1.  **Registration:** User enters Student ID & PIN -> System creates DB entry & Blockchain Wallet.
+2.  **Login:** User enters credentials -> System validates against Postgres -> Returns JWT (JSON Web Token).
+3.  **Student Payment:**
     *   Student clicks "Pay".
     *   Scans Merchant QR (or types Merchant ID).
     *   Enters Amount.
     *   Confirms Transaction.
     *   **Result:** Blockchain updates, Student balance decreases, Merchant balance increases.
-3.  **Faculty Audit:**
+4.  **Faculty Audit:**
     *   Faculty logs in as Admin.
     *   Views "Block Explorer".
     *   Sees the Transaction Hash, Block Number, and Timestamp of the payment just made.
+<!-- 5.  **System Management:**
+    *   Admin can Backup user data to JSON (Postgres Dump).
+    *   Admin can Restore user data from JSON (re-creating wallets if needed).
+    *   *Note:* Students do not manage private keys directly; the University manages the wallet identities (Custodial Wallet). -->
 
 ## 6. Implementation Roadmap
 
@@ -78,15 +84,16 @@ This document defines the scope and execution plan for the "Vertical Slice" MVP 
 
 ### Phase 2: Backend & API
 *   Setup Go Gin Server.
-*   Implement Postgres User Store & Auth Middleware.
+*   Implement Postgres User Store & Auth Middleware (JWT).
 *   Integrate Fabric SDK to invoke Chaincode.
-*   Create endpoints: `/login`, `/balance`, `/transfer`, `/history`.
+*   Create endpoints: `/login`, `/register`, `/balance`, `/transfer`, `/history`, `/backup`, `/restore`.
 
 ### Phase 3: Frontend Development
 *   Initialize Next.js with shadcn/ui.
 *   **Student View:** Wallet Card, QR Scanner (using `react-qr-reader` or similar).
 *   **Merchant View:** Dynamic QR Generator.
-*   **Admin View:** Dashboard & Transaction Table.
+*   **Admin View:** Dashboard, Transaction Table, Backup/Restore Tools.
+*   **Registration:** Public registration page for Students.
 
 ### Phase 4: Integration & Deployment
 *   Deploy to VPS.

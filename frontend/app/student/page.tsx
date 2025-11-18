@@ -22,6 +22,7 @@ import { LogOut, QrCode, Send, ArrowDownLeft, RefreshCw } from "lucide-react";
 interface User {
   username: string;
   role: string;
+  token: string;
 }
 
 export default function StudentDashboard() {
@@ -46,13 +47,15 @@ export default function StudentDashboard() {
       return;
     }
     setUser(parsedUser);
-    fetchBalance(parsedUser.username);
-    fetchHistory(parsedUser.username);
+    fetchBalance(parsedUser.username, parsedUser.token);
+    fetchHistory(parsedUser.username, parsedUser.token);
   }, [router]);
 
-  const fetchBalance = async (username: string) => {
+  const fetchBalance = async (username: string, token: string) => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/balance/${username}`);
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/balance/${username}`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
       if (!res.ok) throw new Error("Failed to fetch balance");
       const data = await res.json();
       setBalance(data.balance);
@@ -66,14 +69,16 @@ export default function StudentDashboard() {
   const [bookmark, setBookmark] = useState("");
   const [hasMore, setHasMore] = useState(false);
 
-  const fetchHistory = async (username: string, loadMore = false) => {
+  const fetchHistory = async (username: string, token: string, loadMore = false) => {
     try {
       const query = new URLSearchParams({
         pageSize: "4",
         bookmark: loadMore ? bookmark : "",
       });
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/history/${username}?${query}`);
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/history/${username}?${query}`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
       if (!res.ok) throw new Error("Failed to fetch history");
       const data = await res.json();
       
@@ -101,7 +106,10 @@ export default function StudentDashboard() {
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/transfer`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${user.token}`
+        },
         body: JSON.stringify({
           from: user.username,
           to: recipient,
@@ -118,8 +126,8 @@ export default function StudentDashboard() {
       setTransferAmount("");
       setRecipient("");
       setIsTransferOpen(false);
-      fetchBalance(user.username);
-      fetchHistory(user.username);
+      fetchBalance(user.username, user.token);
+      fetchHistory(user.username, user.token);
     } catch (error: any) {
       toast.error(error.message);
     } finally {
@@ -170,7 +178,7 @@ export default function StudentDashboard() {
               variant="secondary" 
               size="sm" 
               className="mt-4 w-full bg-white/20 hover:bg-white/30 text-white border-none"
-              onClick={() => { fetchBalance(user.username); fetchHistory(user.username); }}
+              onClick={() => { fetchBalance(user.username, user.token); fetchHistory(user.username, user.token); }}
             >
               <RefreshCw className="mr-2 h-4 w-4" /> Refresh
             </Button>
@@ -314,7 +322,7 @@ export default function StudentDashboard() {
               <Button 
                 variant="outline" 
                 className="w-full" 
-                onClick={() => fetchHistory(user.username, true)}
+                onClick={() => fetchHistory(user.username, user.token, true)}
               >
                 Load More
               </Button>

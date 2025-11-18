@@ -275,6 +275,32 @@ func (s *SmartContract) Transfer(ctx contractapi.TransactionContextInterface, fr
 	return ctx.GetStub().PutState("TX_"+txID, recordJSON)
 }
 
+// CreateWallet initializes a new wallet for a user
+func (s *SmartContract) CreateWallet(ctx contractapi.TransactionContextInterface, id string, role string) error {
+	// Check if wallet already exists
+	walletJSON, err := ctx.GetStub().GetState(id)
+	if err != nil {
+		return fmt.Errorf("failed to read from world state: %v", err)
+	}
+	if walletJSON != nil {
+		return fmt.Errorf("the wallet %s already exists", id)
+	}
+
+	// Create new wallet
+	wallet := UserWallet{
+		ID:      id,
+		Balance: 0,
+		Type:    role,
+	}
+
+	walletJSON, err = json.Marshal(wallet)
+	if err != nil {
+		return err
+	}
+
+	return ctx.GetStub().PutState(id, walletJSON)
+}
+
 // GetPaginatedTransactions returns transactions with pagination
 // If userId is provided, returns transactions for that user.
 // If userId is empty, returns all transactions.

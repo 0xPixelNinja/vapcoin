@@ -15,11 +15,12 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { LogOut, Send, PlusCircle, RefreshCw, FileText } from "lucide-react";
+import { LogOut, Send, PlusCircle, RefreshCw, FileText, Download, Upload } from "lucide-react";
 
 interface User {
   username: string;
   role: string;
+  token: string;
 }
 
 export default function AdminDashboard() {
@@ -39,6 +40,10 @@ export default function AdminDashboard() {
   const [mintAmount, setMintAmount] = useState("");
   const [isMintOpen, setIsMintOpen] = useState(false);
 
+  // Restore State
+  const [isRestoreOpen, setIsRestoreOpen] = useState(false);
+  const [restoreFile, setRestoreFile] = useState<File | null>(null);
+
   const router = useRouter();
 
   useEffect(() => {
@@ -53,13 +58,15 @@ export default function AdminDashboard() {
       return;
     }
     setUser(parsedUser);
-    fetchBalance(parsedUser.username);
-    fetchTransactions();
+    fetchBalance(parsedUser.username, parsedUser.token);
+    fetchTransactions(parsedUser.token);
   }, [router]);
 
-  const fetchBalance = async (username: string) => {
+  const fetchBalance = async (username: string, token: string) => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/balance/${username}`);
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/balance/${username}`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
       if (!res.ok) throw new Error("Failed to fetch balance");
       const data = await res.json();
       setBalance(data.balance);
@@ -69,14 +76,16 @@ export default function AdminDashboard() {
     }
   };
 
-  const fetchTransactions = async (loadMore = false) => {
+  const fetchTransactions = async (token: string, loadMore = false) => {
     try {
       const query = new URLSearchParams({
         pageSize: "4",
         bookmark: loadMore ? bookmark : "",
       });
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/transactions?${query}`);
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/transactions?${query}`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
       if (!res.ok) throw new Error("Failed to fetch transactions");
       const data = await res.json();
       
@@ -98,11 +107,15 @@ export default function AdminDashboard() {
 
   const handleMint = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) return;
     setLoading(true);
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/mint`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${user.token}`
+        },
         body: JSON.stringify({ amount: parseFloat(mintAmount) }),
       });
 
@@ -111,8 +124,8 @@ export default function AdminDashboard() {
       toast.success(`Successfully minted ${mintAmount} VapCoins`);
       setMintAmount("");
       setIsMintOpen(false);
-      if (user) fetchBalance(user.username);
-      fetchTransactions();
+      fetchBalance(user.username, user.token);
+      fetchTransactions(user.token);
     } catch (error) {
       toast.error("Minting failed");
     } finally {
@@ -128,7 +141,10 @@ export default function AdminDashboard() {
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/transfer`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${user.token}`
+        },
         body: JSON.stringify({
           from: user.username,
           to: recipient,
@@ -145,13 +161,69 @@ export default function AdminDashboard() {
       setTransferAmount("");
       setRecipient("");
       setIsTransferOpen(false);
-      fetchBalance(user.username);
-      fetchTransactions();
+      fetchBalance(user.username, user.token);
+      fetchTransactions(user.token);
     } catch (error: any) {
       toast.error(error.message);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleBackup = async () => {
+    if (!user) return;
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/backup`, {
+        headers: { "Authorization": `Bearer ${user.token}` }
+      });
+      if (!res.ok) throw new Error("Backup failed");
+      const data = await res.json();
+      
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `vapcoin_backup_${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      toast.success("Backup downloaded successfully");
+    } catch (error) {
+      toast.error("Failed to download backup");
+    }
+  };
+
+  const handleRestore = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!restoreFile || !user) return;
+    setLoading(true);
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const json = JSON.parse(event.target?.result as string);
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/restore`, {
+          method: "POST",
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${user.token}`
+          },
+          body: JSON.stringify(json),
+        });
+
+        if (!res.ok) throw new Error("Restore failed");
+        const data = await res.json();
+        toast.success(data.message || "Restore successful");
+        setIsRestoreOpen(false);
+        setRestoreFile(null);
+      } catch (error) {
+        toast.error("Failed to restore data. Invalid file or server error.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    reader.readAsText(restoreFile);
   };
 
   const handleLogout = () => {
@@ -188,7 +260,7 @@ export default function AdminDashboard() {
               variant="secondary" 
               size="sm" 
               className="mt-4 w-full bg-white/10 hover:bg-white/20 text-white border-none"
-              onClick={() => { fetchBalance(user.username); fetchTransactions(); }}
+              onClick={() => { fetchBalance(user.username, user.token); fetchTransactions(user.token); }}
             >
               <RefreshCw className="mr-2 h-4 w-4" /> Refresh
             </Button>
@@ -274,6 +346,45 @@ export default function AdminDashboard() {
           </Dialog>
         </div>
 
+        {/* Backup & Restore */}
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold text-slate-900">System Management</h2>
+          <div className="grid grid-cols-2 gap-4">
+            <Button variant="outline" className="flex gap-2" onClick={handleBackup}>
+              <Download className="h-4 w-4" /> Backup Data
+            </Button>
+            
+            <Dialog open={isRestoreOpen} onOpenChange={setIsRestoreOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="flex gap-2">
+                  <Upload className="h-4 w-4" /> Restore Data
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Restore Data</DialogTitle>
+                  <DialogDescription>Upload a backup JSON file to restore users.</DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleRestore} className="space-y-4 mt-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="file">Backup File</Label>
+                    <Input 
+                      id="file" 
+                      type="file" 
+                      accept=".json"
+                      onChange={(e) => setRestoreFile(e.target.files?.[0] || null)}
+                      required
+                    />
+                  </div>
+                  <Button type="submit" className="w-full" disabled={loading || !restoreFile}>
+                    {loading ? "Restoring..." : "Restore Data"}
+                  </Button>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </div>
+
         {/* Block Explorer */}
         <div className="space-y-4">
           <div className="flex items-center gap-2">
@@ -320,7 +431,7 @@ export default function AdminDashboard() {
               <Button 
                 variant="outline" 
                 className="w-full" 
-                onClick={() => fetchTransactions(true)}
+                onClick={() => fetchTransactions(user.token, true)}
               >
                 Load More
               </Button>
