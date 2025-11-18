@@ -1,0 +1,41 @@
+# General
+.DS_Store
+.vscode/
+*.log
+
+# Documentation
+*.pdf
+*.tex
+# *.md
+
+# Go / Chaincode / Backend
+/backend/bin/
+/chaincode/vendor/
+*.exe
+*.test
+*.out
+
+# Node.js / Frontend
+node_modules/
+.next/
+out/
+build/
+.env
+.env.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Hyperledger Fabric Network Artifacts
+# Generated crypto material
+network/crypto-config/
+# Generated channel artifacts
+network/channel-artifacts/
+# Wallets and identities
+wallet/
+keystore/
+# Chaincode packages
+*.tar.gz
+# Docker volumes (if mapped locally)
+data/
+log.txt
