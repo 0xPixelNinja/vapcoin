@@ -14,7 +14,7 @@ This guide describes how to deploy the VapCoin stack (Blockchain, Backend, Front
 Clone the repository to your VPS:
 
 ```bash
-git clone https://github.com/0xPixelNinja/vapcoin vapcoin
+git clone <your-repo-url> vapcoin
 cd vapcoin
 ```
 
@@ -24,10 +24,15 @@ The Hyperledger Fabric network must be running before the application starts.
 
 ```bash
 cd network
-# Start the network (Orderer, Peer, CA)
+chmod +x *.sh
+
+# 1. Generate Crypto Material & Artifacts (Important for fresh install)
+./generate.sh
+
+# 2. Start the network (Orderer, Peer, CA)
 ./start.sh
 
-# Deploy the Smart Contract
+# 3. Deploy the Smart Contract
 ./deploy_chaincode.sh
 ```
 
@@ -37,15 +42,7 @@ docker ps
 # You should see peer0.org1.example.com, orderer.example.com, etc.
 ```
 
-## 3. SSL Certificate Setup (Host Nginx)
-
-Since you are running Nginx on the host, you should use your existing Certbot setup to generate certificates for `vapcoin.rkr.cx`.
-
-```bash
-sudo certbot certonly --nginx -d vapcoin.rkr.cx
-```
-
-## 4. Deploy the Application Stack
+## 3. Deploy the Application Stack
 
 Now we can start the Backend, Frontend, and Database. We have configured them to listen on `127.0.0.1` ports 12001 and 12000, so they won't conflict with your host Nginx.
 
@@ -54,25 +51,29 @@ cd ../deployment
 docker-compose -f docker-compose.prod.yaml up -d --build
 ```
 
-## 5. Configure Host Nginx
+## 4. Configure Host Nginx (HTTP First)
 
 1.  Copy the example configuration to your Nginx sites directory:
     ```bash
     sudo cp nginx_host_example.conf /etc/nginx/sites-available/vapcoin.rkr.cx
     ```
-2.  Edit the file to ensure the SSL paths match your system:
-    ```bash
-    sudo nano /etc/nginx/sites-available/vapcoin.rkr.cx
-    ```
-3.  Enable the site:
+2.  Enable the site:
     ```bash
     sudo ln -s /etc/nginx/sites-available/vapcoin.rkr.cx /etc/nginx/sites-enabled/
     ```
-4.  Test and Reload Nginx:
+3.  Test and Reload Nginx:
     ```bash
     sudo nginx -t
     sudo systemctl reload nginx
     ```
+
+## 5. Enable SSL with Certbot
+
+Run Certbot to automatically configure SSL and redirects for your new site.
+
+```bash
+sudo certbot --nginx -d vapcoin.rkr.cx
+```
 
 ## 6. Verification
 
@@ -95,3 +96,19 @@ docker-compose -f docker-compose.prod.yaml up -d --build
     ```bash
     docker exec -t vapcoin-db pg_dumpall -c -U postgres > dump_`date +%d-%m-%Y"_"%H_%M_%S`.sql
     ```
+
+## 8. Troubleshooting & Reset
+
+If the network fails to start or you need a clean slate:
+
+```bash
+# 1. Stop the App Stack
+cd deployment
+docker-compose -f docker-compose.prod.yaml down -v
+
+# 2. Stop the Network
+cd ../network
+./teardown.sh
+
+# 3. Restart from Step 2
+```
