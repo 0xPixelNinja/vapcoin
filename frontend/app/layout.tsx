@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "VapCoin - Campus Currency",
-  description: "VIT-AP Campus Digital Currency System",
+  description: "Campus Digital Currency System",
 };
 
 export default function RootLayout({

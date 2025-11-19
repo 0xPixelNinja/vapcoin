@@ -2,7 +2,7 @@
 
 ## 1. Executive Summary
 
-This document defines the scope and execution plan for the "Vertical Slice" MVP of the VIT-AP Campus Coin project. The primary objective is to demonstrate a functional, production-grade blockchain loop to faculty stakeholders. This MVP will prove the team's capability to integrate Hyperledger Fabric with a modern web stack, handling real-time transactions between Students and Merchants.
+This document defines the scope and execution plan for the "Vertical Slice" MVP of the Campus Coin project. The primary objective is to demonstrate a functional, production-grade blockchain loop to faculty stakeholders. This MVP will prove the team's capability to integrate Hyperledger Fabric with a modern web stack, handling real-time transactions between Students and Merchants.
 
 ## 2. MVP Objectives
 
@@ -17,9 +17,10 @@ This document defines the scope and execution plan for the "Vertical Slice" MVP 
 *   **Blockchain:** Single-node Hyperledger Fabric network (Peer + Orderer + CA).
 *   **Auth:** Simple Database Authentication (Username/Password stored in Postgres).
 *   **Roles:**
-    *   **Admin:** Can Mint coins and view the Ledger.
+    *   **Admin:** Can Mint coins, View Ledger, Backup/Restore Data.
     *   **Student:** Can View Balance, Scan QR, Send Coins, View History.
     *   **Merchant:** Can Generate QR, Receive Coins, View Sales History.
+    *   **Public:** Can Verify Transactions via ID.
 *   **QR System:** Camera-based scanning with a manual "Enter ID" fallback.
 *   **Persistence:** PostgreSQL for user profiles and off-chain transaction caching.
 *   **Hosting:** VPS with Docker Compose and SSL (required for Camera access).
@@ -53,7 +54,8 @@ This document defines the scope and execution plan for the "Vertical Slice" MVP 
 *   `Transfer(from, to, amount)`: Moves coins between wallets.
 *   `GetBalance(id)`: Returns current world state for a user.
 *   `GetHistory(id)`: Returns history of a specific key.
-*   `GetAllTransactions()`: (Admin only) Dumps the ledger for the explorer.
+*   `GetTransaction(txId)`: Returns details of a specific transaction by ID.
+*   `GetPaginatedTransactions(pageSize, bookmark)`: Returns paginated ledger history.
 *   `CreateWallet(id, role)`: Initializes a new wallet on the ledger.
 
 ### 5.2 User Flows
@@ -69,10 +71,14 @@ This document defines the scope and execution plan for the "Vertical Slice" MVP 
     *   Faculty logs in as Admin.
     *   Views "Block Explorer".
     *   Sees the Transaction Hash, Block Number, and Timestamp of the payment just made.
-<!-- 5.  **System Management:**
+5.  **Public Verification:**
+    *   Any user (logged in or not) navigates to `/verify`.
+    *   Enters a Transaction ID.
+    *   System queries the blockchain directly to verify the transaction exists and is valid.
+6.  **System Management:**
     *   Admin can Backup user data to JSON (Postgres Dump).
     *   Admin can Restore user data from JSON (re-creating wallets if needed).
-    *   *Note:* Students do not manage private keys directly; the University manages the wallet identities (Custodial Wallet). -->
+    *   *Note:* Students do not manage private keys directly; the University manages the wallet identities (Custodial Wallet).
 
 ## 6. Implementation Roadmap
 
