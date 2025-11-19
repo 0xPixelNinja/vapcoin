@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -16,7 +17,7 @@ import (
 
 var Contract *client.Contract
 
-const (
+var (
 	mspID        = "Org1MSP"
 	certPath     = "../network/crypto-config/peerOrganizations/org1.example.com/users/User1@org1.example.com/msp/signcerts/User1@org1.example.com-cert.pem"
 	keyPath      = "../network/crypto-config/peerOrganizations/org1.example.com/users/User1@org1.example.com/msp/keystore/"
@@ -26,6 +27,23 @@ const (
 )
 
 func Init() error {
+	// Override with Env Vars if present
+	if v := os.Getenv("FABRIC_CERT_PATH"); v != "" {
+		certPath = v
+	}
+	if v := os.Getenv("FABRIC_KEY_PATH"); v != "" {
+		keyPath = v
+	}
+	if v := os.Getenv("FABRIC_TLS_CERT_PATH"); v != "" {
+		tlsCertPath = v
+	}
+	if v := os.Getenv("FABRIC_PEER_ENDPOINT"); v != "" {
+		peerEndpoint = v
+	}
+	if v := os.Getenv("FABRIC_GATEWAY_PEER"); v != "" {
+		gatewayPeer = v
+	}
+
 	// The gRPC client connection should be shared by all Gateway connections to this endpoint
 	clientConnection := newGrpcConnection()
 

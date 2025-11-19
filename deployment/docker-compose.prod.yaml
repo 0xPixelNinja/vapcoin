@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: vapcoin-frontend
+    restart: always
+    environment:
+      - NEXT_PUBLIC_API_URL=https://vapcoin.rkr.cx/api
+    ports:
+      - "127.0.0.1:12001:3000" # Expose to host localhost only
+    networks:
+      - vapcoin-net
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: vapcoin-backend
+    restart: always
+    environment:
+      - PORT=8080
+      - DB_HOST=postgres
+      - DB_USER=postgres
+      - DB_PASSWORD=password
+      - DB_NAME=vapcoin
+      # Fabric Configuration
+      - FABRIC_CERT_PATH=/app/crypto-config/peerOrganizations/org1.example.com/users/User1@org1.example.com/msp/signcerts/User1@org1.example.com-cert.pem
+      - FABRIC_KEY_PATH=/app/crypto-config/peerOrganizations/org1.example.com/users/User1@org1.example.com/msp/keystore/
+      - FABRIC_TLS_CERT_PATH=/app/crypto-config/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
+      - FABRIC_PEER_ENDPOINT=peer0.org1.example.com:7051
+      - FABRIC_GATEWAY_PEER=peer0.org1.example.com
+    volumes:
+      - ../network/crypto-config:/app/crypto-config
+    ports:
+      - "127.0.0.1:12000:8080" # Expose to host localhost only
+    depends_on:
+      - postgres
+    networks:
+      - vapcoin-net
+      - network_test # Connect to Fabric Network
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: vapcoin-db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: vapcoin
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - vapcoin-net
+
+volumes:
+  postgres_data:
+
+networks:
+  vapcoin-net:
+  network_test:
+    external: true # Assumes network/start.sh has been run

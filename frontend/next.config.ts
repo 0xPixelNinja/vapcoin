@@ -17,9 +17,10 @@ const nextConfig: NextConfig = {
   // Allow ngrok tunneling
   experimental: {
     serverActions: {
-      allowedOrigins: ["ngrok-free.app", "*.ngrok-free.app", "192.168.0.*"],
+      allowedOrigins: ["ngrok-free.app", "*.ngrok-free.app", "192.168.0.*", "vapcoin.rkr.cx"],
     },
   },
+  output: "standalone",
 };
 
 export default nextConfig;
