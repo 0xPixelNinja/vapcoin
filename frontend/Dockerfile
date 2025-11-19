@@ -13,6 +13,9 @@ RUN npm ci
 COPY . .
 
 # Build the application
+# Pass the API URL as a build argument
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 RUN npm run build
 
 # Production Stage

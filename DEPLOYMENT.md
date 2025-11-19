@@ -96,3 +96,19 @@ sudo certbot --nginx -d vapcoin.rkr.cx
     ```bash
     docker exec -t vapcoin-db pg_dumpall -c -U postgres > dump_`date +%d-%m-%Y"_"%H_%M_%S`.sql
     ```
+
+## 8. Troubleshooting & Reset
+
+If the network fails to start or you need a clean slate:
+
+```bash
+# 1. Stop the App Stack
+cd deployment
+docker-compose -f docker-compose.prod.yaml down -v
+
+# 2. Stop the Network
+cd ../network
+./teardown.sh
+
+# 3. Restart from Step 2
+```
