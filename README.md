@@ -1,17 +1,46 @@
 # VapCoin
 
-VapCoin is a permissioned blockchain-based campus payment system designed for university campus. It leverages Hyperledger Fabric to provide a secure, transparent, and immutable ledger for transactions between students, merchants, and university administration.
+VapCoin is an enterprise-grade, permissioned blockchain payment solution engineered for university campus environments. Built on **Hyperledger Fabric**, it facilitates secure, real-time, and immutable micro-transactions between students, merchants, and administration, replacing traditional centralized ledgers with a distributed trust model.
 
 ## Project Overview
 
-This project serves as a "Vertical Slice" MVP to demonstrate the viability of blockchain technology for campus micro-transactions. It replaces traditional database-only ledgers with a distributed ledger technology (DLT) approach, ensuring that every transaction is cryptographically signed and permanently recorded.
+This project represents a "Vertical Slice" MVP designed to validate the application of Distributed Ledger Technology (DLT) in a closed-loop campus economy. By utilizing a permissioned blockchain, VapCoin ensures that every transaction is cryptographically signed, timestamped, and permanently recorded, providing an audit trail that is tamper-proof by design.
+
+## Live Demo
+
+Experience the platform live at: **[https://vapcoin.rkr.cx/](https://vapcoin.rkr.cx/)**
+
+Use the following credentials to explore the system:
+
+| Role | Username | Password |
+|------|----------|----------|
+| **Student** | `student1` | `password` |
+| **Merchant** | `merchant1` | `password` |
+
+## Platform Showcase
+
+### Student Dashboard
+*Real-time balance tracking and QR-based payments.*
+![Student Dashboard](docs/screenshots/student_dashboard.png)
+
+### Merchant Portal
+*Point-of-Sale interface for generating dynamic payment requests.*
+![Merchant Panel](docs/screenshots/merchant_panel.png)
+
+### Admin Console
+*System management for minting coins and user administration.*
+![Admin Panel](docs/screenshots/admin_panel.png)
+
+### Blockchain Explorer
+*Transparent, immutable ledger view for auditing transactions.*
+![Blockchain Explorer](docs/screenshots/explorer.png)
 
 ## Features
 
 ### Core Blockchain
-- **Hyperledger Fabric v2.5**: Enterprise-grade permissioned blockchain network.
-- **Smart Contracts (Chaincode)**: Written in Go, handling Mint, Transfer, and Query logic.
-- **Immutable Ledger**: All transactions are permanent and traceable.
+- **Hyperledger Fabric v2.5**: Industry-standard permissioned blockchain framework.
+- **Smart Contracts (Chaincode)**: Business logic written in Go, enforcing rules for Minting, Transferring, and Querying assets.
+- **Immutable Ledger**: Guarantees data integrity and non-repudiation of all financial activities.
 
 ### User Roles
 - **Students**:
@@ -34,15 +63,15 @@ This project serves as a "Vertical Slice" MVP to demonstrate the viability of bl
 
 - **Blockchain**: Hyperledger Fabric, Docker, Go (Chaincode)
 - **Backend**: Go (Gin Framework), PostgreSQL (User Data & Auth)
-- **Frontend**: Next.js 14 (App Router), TypeScript, Tailwind CSS, Shadcn UI
+- **Frontend**: Next.js (App Router), TypeScript, Tailwind CSS, Shadcn UI
 - **Infrastructure**: Docker Compose
 
 ## Getting Started
 
 ### Prerequisites
 - Docker & Docker Compose
-- Go 1.20+
-- Node.js 18+
+- Go 1.24+
+- Node.js 20+
 - PostgreSQL
 
 ### Installation
