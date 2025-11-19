@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -41,12 +42,18 @@ func Init() {
 	}
 
 	var err error
-	DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	// Retry connection logic
+	for i := 0; i < 10; i++ {
+		DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
+		if err == nil {
+			break
+		}
+		log.Printf("Failed to connect to database (attempt %d/10): %v", i+1, err)
+		time.Sleep(2 * time.Second)
+	}
+
 	if err != nil {
-		log.Printf("Failed to connect to database: %v", err)
-		// For MVP, we might want to continue even if DB fails initially (e.g. if container starting)
-		// But usually we should fail.
-		return
+		log.Fatalf("Could not connect to database after retries: %v", err)
 	}
 
 	// Auto Migrate

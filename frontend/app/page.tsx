@@ -91,12 +91,6 @@ export default function LoginPage() {
             </div>
           </CardFooter>
         </form>
-        <div className="px-6 pb-4 text-xs text-center text-gray-500">
-          <p>Demo Credentials:</p>
-          <p>Student: student1 / password</p>
-          <p>Merchant: merchant1 / password</p>
-          <p>Admin: admin / password</p>
-        </div>
         <div className="px-6 pb-6 text-center">
           <Button variant="link" size="sm" onClick={() => router.push("/verify")}>
             Verify Transaction (Public)
